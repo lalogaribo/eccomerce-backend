@@ -53,7 +53,7 @@ userSchema.set('toJSON', {
 
 userSchema.methods.generateJwtToken = async function() {
     const user = this;
-    const token = jwt.sign({_id: user._id}, process.env.SECRET_KEY, {expiresIn: '1d'})
+    const token = jwt.sign({_id: user._id, isAdmin: user.isAdmin}, process.env.SECRET_KEY, {expiresIn: '1d'})
     return token
 }
 
