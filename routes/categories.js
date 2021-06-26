@@ -1,5 +1,5 @@
 const { categoryController } = require("../controllers/categories.controller");
-
+const express = require("express");
 const router = express.Router();
 
 router.get(`/`, categoryController.getAllCategories);

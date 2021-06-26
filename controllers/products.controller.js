@@ -3,6 +3,7 @@ const { Category } = require("../models/category");
 const { request, response } = require("express");
 
 const getAllProducts = async (req = request, res = response) => {
+  console.log(req.url);
   let filter = {};
   if (req.query.categories) {
     filter = { category: req.query.categories.split(",") };
