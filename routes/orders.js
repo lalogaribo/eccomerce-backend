@@ -1,112 +1,18 @@
-const { Order } = require("../models/order");
 const express = require("express");
-const { OrderItem } = require("../models/orderItem");
 const router = express.Router();
 
-router.get(`/`, async (req, res) => {
-  const orderList = await Order.find()
-    .populate("user", "name")
-    .sort({ createdAt: -1 });
+const { ordersController } = require("../controllers/orders.controller");
 
-  if (!orderList) {
-    res.status(500).json({ success: false });
-  }
-  res.send(orderList);
-});
+router.get(`/`, ordersController.getAllOrders);
 
-router.get(`/:orderId`, async (req, res) => {
-  const { orderId } = req.params;
-  const order = await Order.findById(orderId).populate({
-    path: "orderItems",
-    populate: { path: "product", populate: "category" },
-  });
+router.get(`/:orderId`, ordersController.getSingleOrder);
 
-  if (!order) {
-    res.status(500).json({ success: false });
-  }
-  res.send(order);
-});
+router.post("/", ordersController.createOrder);
 
-router.post("/", async (req, res) => {
-  const orderItemsIds = Promise.all(
-    req.body.orderItems.map(async (orderItem) => {
-      let newOrderItem = new OrderItem({
-        quantity: orderItem.quantity,
-        product: orderItem.product,
-      });
-      newOrderItem = await newOrderItem.save();
-      return newOrderItem._id;
-    })
-  );
-  const resolvedOrder = await orderItemsIds;
+router.put("/:orderId", ordersController.updateOrder);
 
-  const totalPrices = await Promise.all(
-    resolvedOrder.map(async (orderItem) => {
-      const item = await OrderItem.findById(orderItem).populate(
-        "product",
-        "price"
-      );
-      const total = item.product.price * item.quantity;
-      return total;
-    })
-  );
+router.get("/get/totalsales", ordersController.totalSales);
 
-  const total = totalPrices.reduce((a, b) => a + b, 0);
-  let order = new Order({
-    ...req.body,
-    orderItems: resolvedOrder,
-    totalPrice: total,
-  });
-
-  try {
-    await order.save();
-    res.status(201).send({ success: true, order });
-  } catch (error) {
-    res.status(400).send(error);
-  }
-});
-
-router.put("/:orderId", async (req, res) => {
-  const { orderId } = req.params;
-  const { status } = req.body;
-  try {
-    let order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true }
-    ).populate("orderItems");
-    res.status(200).send({ success: true, order });
-  } catch (error) {
-    res.send(error);
-  }
-});
-
-router.get("/get/totalsales", async (req, res) => {
-  const totalSales = await Order.aggregate([
-    { $group: { _id: null, totalSales: { $sum: "$totalPrice" } } },
-  ]);
-  if (!totalSales) {
-    return res.status(400).send("The total sales cant be generated");
-  }
-  res.status(200).send(totalSales);
-});
-
-router.get(`/get/myOrders/:userId`, async (req, res) => {
-  const { userId } = req.params;
-  const myOrders = await Order.find({ user: userId })
-    .populate({
-      path: "orderItems",
-      populate: {
-        path: "product",
-        populate: "category",
-      },
-    })
-    .sort({ createdAt: -1 });
-
-  if (!myOrders) {
-    res.status(500).json({ success: false });
-  }
-  res.send(myOrders);
-});
+router.get(`/get/myOrders/:userId`, ordersController.myOrders);
 
 module.exports = router;
